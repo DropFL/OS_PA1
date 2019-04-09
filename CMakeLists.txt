@@ -1,0 +1,1 @@
+ADD_EXECUTABLE( main main.c MFQ.c queue.c scheduler.c process.c )
