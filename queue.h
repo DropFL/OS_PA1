@@ -43,10 +43,11 @@ Process* peek (ProcQueue*);
 /* Execute the `Scheduler.schedule` function of the `ProcQueue`. */
 int schedule (ProcQueue*);
 
-/* Iterate the target `ProcQueue` and execute given function on each `Process` */
+/* Iterate the target `ProcQueue` and execute given function on each `Process`.
+   The order of iteration is from the first to last (i.e. from the head to tail). */
 void iterate (ProcQueue*, IterFunc*, void* arg);
 
-/* Remove the head of `from` and set it to the head of `to` */
+/* Remove the head of `from` and enqueue that into `to` */
 void move_head (ProcQueue* from, ProcQueue* to);
 
 #endif

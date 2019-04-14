@@ -1,6 +1,45 @@
 #include <stdlib.h>
-#include <stdarg.h>
 #include "MFQ.h"
+#include "option.h"
+
+static int last = -1;
+
+static void elapse (Process* p, void* arg) {
+    void** args = (void**)arg;
+    int time = *(int*)args[0];
+    MFQ* mfq = (MFQ*)args[1];
+
+    VERBOSE printf("Elapse %d on process %d\n", time, p->pid);
+
+    if (CUR_CYCLE(p) <= time) {
+        VERBOSE printf("Process %d's cycle %d has ended.\n", p->pid, p->current_cycle);
+        CUR_CYCLE(p) = 0;
+        if ((p->current_cycle ++) % 2 == 0) {
+            VERBOSE printf("Moving process %d from ready queue to queue %d...\n", p->pid, p->queue_idx);
+            move_head(mfq->ready_queue, mfq->queues[p->queue_idx]);
+        }
+        else if (PROC_END(p)) {
+            VERBOSE printf("Process %d just ended.\n", p->pid);
+            dequeue(mfq->queues[p->queue_idx]);
+        }
+        else {
+            VERBOSE printf("Moving process %d from queue %d to ready queue...\n", p->pid, p->queue_idx);
+            move_head(mfq->queues[p->queue_idx], mfq->ready_queue);
+            p->queue_idx = p->queue_idx - (p->queue_idx != 0);
+        }
+    }
+    else {
+        CUR_CYCLE(p) -= time;
+        VERBOSE printf("Remaining time: %d\n", CUR_CYCLE(p));
+
+        if (p->current_cycle % 2) {
+            int next_q = p->queue_idx + (p->queue_idx + 1 != mfq->num_queue);
+            VERBOSE printf("Moving process %d from queue %d to queue %d...\n", p->pid, p->queue_idx, next_q);
+            move_head(mfq->queues[p->queue_idx], mfq->queues[next_q]);
+            p->queue_idx = next_q;
+        }
+    }
+}
 
 MFQ* get_mfq (int n) {
     MFQ* mfq = (MFQ*) malloc(sizeof(MFQ));
@@ -18,49 +57,63 @@ MFQ* get_mfq (int n) {
 
 void set_queue (MFQ* mfq, int idx, Policy p, void* arg) {
     if (idx >= mfq->num_queue) return;
-
+    VERBOSE {
+        printf("Setting the policy of queue %d as ", idx);
+        switch (p) {
+            case RR:
+                printf("round robin...\n");
+                break;
+            case SRTN:
+                printf("shortest remaining time next...\n");
+                break;
+            case FCFS:
+                printf("first come first served...\n");
+                break;
+        }
+    }
     mfq->queues[idx] = get_queue(p, arg);
 }
 
 int proceed (MFQ* mfq, Process** p, int* t) {
     int i;
+    void* args[2] = {t, mfq};
 
-    for (i = 0; i < mfq->num_queue; i ++)
-        if (!is_empty(mfq->queues[i])) break;
-    
-    if (i == mfq->num_queue) {
-        if (is_empty(mfq->ready_queue))
-            return 0;
-        
-        *p = NULL;
-        Process* nxt = peek(mfq->ready_queue);
-        *t = CUR_CYCLE(nxt);
+    if (last < 0) {
+        for (i = 0; i < mfq->num_queue; i ++)
+            if (!is_empty(mfq->queues[i])) break;
     }
     else {
-        *p = peek(mfq->queues[i]);
-        CUR_CYCLE(*p) -= (*t = schedule(mfq->queues[i]));
-
-        int next_idx;
-        ProcQueue* next_q;
-
-        if (CUR_CYCLE(*p) <= 0) {
-            next_idx = (*p)->queue_idx - ((*p)->queue_idx != 0);
-            next_q = mfq->ready_queue;
-            (*p)->current_cycle ++;
-        }
-        else {
-            next_idx = (*p)->queue_idx + ((*p)->queue_idx < mfq->num_queue - 1);
-            next_q = mfq->queues[next_idx];
-        }
-
-        (*p)->queue_idx = next_idx;
-        dequeue(mfq->queues[i]);
-
-        if (!PROC_END(*p))
-            enqueue(next_q, *p);
+        VERBOSE printf("Queue %d was saved for scheduling.\n", last);
+        i = last;
     }
 
-    // TODO
+    last = -1;
+    
+    if (i == mfq->num_queue) {
+        VERBOSE printf("There are no queued processes.\n");
+        if (is_empty(mfq->ready_queue)) {
+            VERBOSE printf("Every process is ended.\n");
+            return 0;
+        }
+        
+        *p = NULL;
+        *t = CUR_CYCLE(peek(mfq->ready_queue));
+    }
+    else {
+        VERBOSE printf("Scheduling %d queue...\n", i);
+        *p = peek(mfq->queues[i]);
+        *t = schedule(mfq->queues[i]);
+        VERBOSE printf("Process %d is scheduled for %d.\n", (*p)->pid, *t);
+        if (CUR_CYCLE(*p) > *t && get_policy(mfq->queues[(*p)->queue_idx]->scheduler) == SRTN) {
+            last = (*p)->queue_idx;
+            VERBOSE printf("Process %d has preempted, saving queue %d for next scheduling...\n", (*p)->pid, last);
+        }
+        elapse(*p, args);
+    }
+    VERBOSE printf("Elapsing %d for ready queue...\n", *t);
+    iterate(mfq->ready_queue, elapse, args);
+
+    VERBOSE("proceed ended.\n");
 
     return 1;
 }

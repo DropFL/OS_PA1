@@ -1,6 +1,34 @@
 #include "queue.h"
 #include <stdlib.h>
 
+static void __enqueue (ProcQueue* q, Element* e) {
+    if (is_empty(q)) {
+        q->head = q->tail = e;
+        return;
+    }
+
+    Element* cur;
+
+    for (cur = q->tail; cur; cur = cur->prev)
+        if (!(q->compare) || q->compare(cur->proc, e->proc) <= 0) break;
+
+    if (cur) {
+        if (cur != q->tail) {
+            cur->next->prev = e;
+            e->next = cur->next;
+        }
+        else q->tail = e;
+
+        cur->next = e;
+        e->prev = cur;
+    }
+    else {
+        q->head->prev = e;
+        e->next = q->head;
+        q->head = e;
+    }
+}
+
 static Element* new_elem (Process* p) {
     Element* elem = (Element*) malloc(sizeof(Element));
 
@@ -17,33 +45,7 @@ static Process* del_elem (Element* e) {
 }
 
 void enqueue (ProcQueue* q, Process* p) {
-    Element* elem = new_elem(p);
-
-    if (is_empty(q)) {
-        q->head = q->tail = elem;
-        return;
-    }
-
-    Element* cur;
-
-    for (cur = q->tail; cur; cur = cur->prev)
-        if (!(q->compare) || q->compare(cur->proc, p) >= 0) break;
-
-    if (cur) {
-        cur->next = elem;
-        elem->prev = cur;
-        
-        if (cur != q->tail) {
-            cur->prev = elem;
-            elem->next = cur;
-        }
-        else q->tail = elem;
-    }
-    else {
-        q->head->prev = elem;
-        elem->next = q->head;
-        q->head = elem;
-    }
+    __enqueue(q, new_elem(p));
 }
 
 Process* dequeue (ProcQueue* q) {
@@ -62,8 +64,7 @@ int is_empty (ProcQueue* q) {
 ProcQueue* get_queue (Policy p, void* arg) {
     ProcQueue* q = (ProcQueue*) malloc(sizeof(ProcQueue));
 
-    switch (p)
-    {
+    switch (p) {
         case RR:
             q->compare = get_compare(NONE);
             break;
@@ -84,14 +85,28 @@ Process* peek (ProcQueue* q) {
     return is_empty(q) ? NULL : q->head->proc;
 }
 
-void iterate (ProcQueue* q, IterFunc* func, void* arg) {
-    if (is_empty(q)) return;
-
-    for (Element* e = q->head; e; e = e->next)
-        func(e->proc, arg);
-}
-
 int schedule (ProcQueue* q) {
     if (is_empty(q)) return 0;
     return q->scheduler->schedule(peek(q), q->scheduler->arg);
+}
+
+void iterate (ProcQueue* q, IterFunc* func, void* arg) {
+    if (is_empty(q)) return;
+
+    for (Element *e = q->head, *n = e->next; e; e = n, n = n ? n->next : NULL)
+        func(e->proc, arg);
+}
+
+void move_head (ProcQueue* from, ProcQueue* to) {
+    if (is_empty(from)) return;
+    
+    Element* target = from->head;
+
+    if (from->head = target->next)
+        from->head->prev = NULL;
+    else
+        from->tail = NULL;
+    
+    target->next = NULL;
+    __enqueue(to, target);
 }

@@ -30,4 +30,7 @@ typedef enum {
 /* Get a process comparator function matches to given factor. */
 Scheduler* get_scheduler (Policy, void*);
 
+/* Get the original `Policy` used for creating given `Scheduler`. */
+Policy get_policy (Scheduler*);
+
 #endif

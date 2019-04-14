@@ -5,7 +5,7 @@
 
 #define CUR_CYCLE(p) (p)->cycles[(p)->current_cycle]
 #define NEXT_CYCLE(p) (p)->cycles[(p)->current_cycle + 1]
-#define PROC_END(p) ((p)->current_cycle == (p)->num_cycles)
+#define PROC_END(p) ((p)->current_cycle >= (p)->num_cycles)
 
 typedef struct {
     /* ID of this `Process`. */
@@ -26,7 +26,7 @@ typedef struct {
 
 typedef int ProcCompare (Process* a, Process* b);
 
-typedef enum _fctr {
+typedef enum {
     /* Does not compare process at all. */
     NONE,
 

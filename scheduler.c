@@ -1,10 +1,9 @@
 #include "scheduler.h"
 #include "queue.h"
 #include <stdlib.h>
-#include <stdint.h>
 
 static int round_robin (Process* p, void* arg) {
-    intptr_t slice = (intptr_t) arg;
+    int slice = (intptr_t) arg;
 
     if (CUR_CYCLE(p) < slice)
         slice = CUR_CYCLE(p);
@@ -13,15 +12,16 @@ static int round_robin (Process* p, void* arg) {
 }
 
 static int srtn (Process* p, void* arg) {
+    if (!arg) return CUR_CYCLE(p);
+
     ProcQueue* ready = (ProcQueue *) arg;
     int idx = 0;
-    int cycle = CUR_CYCLE(p);
-    int time = cycle;
-
-    for (Element* e = ready->head; e && CUR_CYCLE(e->proc) < cycle; e = e->next) {
+    int time = CUR_CYCLE(p);
+    
+    for (Element* e = ready->head; e && CUR_CYCLE(e->proc) < CUR_CYCLE(p); e = e->next) {
         Process* r = e->proc;
-        if (p->queue_idx == r->queue_idx && cycle - CUR_CYCLE(r) > NEXT_CYCLE(r)) {
-            time = CUR_CYCLE(e->proc);
+        if (p->queue_idx == r->queue_idx && CUR_CYCLE(p) - CUR_CYCLE(r) > NEXT_CYCLE(r)) {
+            time = CUR_CYCLE(r);
             break;
         }
     }
@@ -38,12 +38,12 @@ Scheduler* get_scheduler (Policy p, void* arg) {
 
     switch(p) {
         case RR:
-            sch->arg = arg;
             sch->schedule = round_robin;
+            sch->arg = arg;
             break;
         case SRTN:
-            sch->arg = arg;
             sch->schedule = srtn;
+            sch->arg = arg;
             break;
         case FCFS:
             sch->schedule = fcfs;
@@ -52,4 +52,13 @@ Scheduler* get_scheduler (Policy p, void* arg) {
     }
 
     return sch;
+}
+
+Policy get_policy (Scheduler* s) {
+    if (s->schedule == round_robin)
+        return RR;
+    if (s->schedule == srtn)
+        return SRTN;
+    if (s->schedule == fcfs)
+        return FCFS;
 }
