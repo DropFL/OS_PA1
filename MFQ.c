@@ -1,26 +1,66 @@
 #include <stdlib.h>
+#include <stdarg.h>
 #include "MFQ.h"
 
-void enqueue (ProcQueue *q, Process *proc) {
-    Element *elem = (Element *) malloc(sizeof(Element));
-    elem->proc = proc;
-    elem->next = elem->prev = NULL;
+MFQ* get_mfq (int n) {
+    MFQ* mfq = (MFQ*) malloc(sizeof(MFQ));
+
+    mfq->num_queue = n;
+    mfq->queues = (ProcQueue**) malloc(sizeof(ProcQueue*) * n);
+
+    for (int i = 0; i < n; i ++)
+        mfq->queues[i] = NULL;
     
-    if (q->head) {
-        q->tail->next = elem;
-        elem->prev = q->tail;
-        q->tail = elem;
-    }
-    else q->head = q->tail = elem;
+    mfq->ready_queue = get_queue(SRTN, NULL);
+
+    return mfq;
 }
 
-Process *dequeue (ProcQueue *q) {
-    Element *elem = q->head;
-    Process *proc = elem->proc;
+void set_queue (MFQ* mfq, int idx, Policy p, void* arg) {
+    if (idx >= mfq->num_queue) return;
 
-    q->head = elem->next;
+    mfq->queues[idx] = get_queue(p, arg);
+}
 
-    free(elem);
+int proceed (MFQ* mfq, Process** p, int* t) {
+    int i;
 
-    return proc;
+    for (i = 0; i < mfq->num_queue; i ++)
+        if (!is_empty(mfq->queues[i])) break;
+    
+    if (i == mfq->num_queue) {
+        if (is_empty(mfq->ready_queue))
+            return 0;
+        
+        *p = NULL;
+        Process* nxt = peek(mfq->ready_queue);
+        *t = CUR_CYCLE(nxt);
+    }
+    else {
+        *p = peek(mfq->queues[i]);
+        CUR_CYCLE(*p) -= (*t = schedule(mfq->queues[i]));
+
+        int next_idx;
+        ProcQueue* next_q;
+
+        if (CUR_CYCLE(*p) <= 0) {
+            next_idx = (*p)->queue_idx - ((*p)->queue_idx != 0);
+            next_q = mfq->ready_queue;
+            (*p)->current_cycle ++;
+        }
+        else {
+            next_idx = (*p)->queue_idx + ((*p)->queue_idx < mfq->num_queue - 1);
+            next_q = mfq->queues[next_idx];
+        }
+
+        (*p)->queue_idx = next_idx;
+        dequeue(mfq->queues[i]);
+
+        if (!PROC_END(*p))
+            enqueue(next_q, *p);
+    }
+
+    // TODO
+
+    return 1;
 }

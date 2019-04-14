@@ -9,24 +9,39 @@ typedef struct _elem {
     struct _elem *next, *prev;
 } Element;
 
-typedef struct {
+typedef struct _queue {
     /* Head and tail `Element` of this `ProcQueue`. */
     Element *head, *tail;
 
+    /* `Process` comparator function that determines prior process */
+    ProcCompare* compare;
+
     /* `Scheduler` object that defines a strategy to manage `Process`es in this `ProcQueue`. */
-    const IProcQueue* const interface;
+    Scheduler* scheduler;
 } ProcQueue;
 
-typedef struct {
-    /* Add a `Process` object to the queue. */
-    void (*enqueue) (ProcQueue*, Process*);
+typedef void IterFunc (Process*, void*);
 
-    /* Remove a `Process` object from the queue and return it. */
-    Process* (*dequeue) (ProcQueue*);
+/* Add a `Process` object to `ProcQueue`. */
+void enqueue (ProcQueue*, Process*);
 
-    /* Probe if the queue is empty. */
-    int (*is_empty) (ProcQueue*);
-    
-    /* Inherited `IScheduler` interface object. */
-    Scheduler* scheduler;
-} IProcQueue;
+/* Remove a `Process` object from `ProcQueue` and return it. */
+Process* dequeue (ProcQueue*);
+
+/* Check if the `ProcQueue` is empty. */
+int is_empty (ProcQueue*);
+
+/* Generate a `ProcQueue` object with given `Policy`. */
+ProcQueue* get_queue (Policy policy, void* args);
+
+/* Probe the first `Process` object in `ProcQueue`. */
+Process* peek (ProcQueue*);
+
+/* Execute the `Scheduler.schedule` function of the `ProcQueue`. */
+int schedule (ProcQueue*);
+
+/* Iterate the target `ProcQueue` and execute given function on each `Process` */
+void iterate (ProcQueue*, IterFunc*);
+
+/* Remove the head of `from` and set it to the head of `to` */
+void move_head (ProcQueue* from, ProcQueue* to);

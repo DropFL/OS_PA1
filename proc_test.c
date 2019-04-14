@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "MFQ.h"
+#include "process.h"
 #include "option.h"
 
 int main (int argc, char *argv[]) {
@@ -17,7 +17,16 @@ int main (int argc, char *argv[]) {
 
     VERBOSE { printf("file \"%s\" has opened successfully.\n", file); }
 
-    // TODO
+    int n;
+    fscanf(input, "%d", &n);
+
+    for (int i = 0; i < n; i ++) {
+        Process* p = read_process(input);
+        if (p) {
+            print_process(p);
+            free_process(p);
+        }
+    }
 
     fclose(input);
 

@@ -1,16 +1,16 @@
 #include "process.h"
 
-typedef struct {
+typedef struct _schd {
     /* Arguments of this `Scheduler`. */
-    void *argv;
+    void *arg;
 
     /* Function that contains core logic of this `Scheduler`.
-       This function executes (i.e. modifies properties of) given `Process`.
-       Return value means how much time has passed after scheduling. */
+       This function calculates the scheduled time of given `Process`.
+       However, it does not modify any properties of any object. */
     int (*schedule) (Process*, void*);
 } Scheduler;
 
-typedef enum {
+typedef enum _plcy {
     /* `RR` is an abbreviation of **R**ound **R**obin.
        This policy needs `time_slice` parameter to use. */
     RR,
@@ -25,4 +25,4 @@ typedef enum {
 } Policy;
 
 /* Get a process comparator function matches to given factor. */
-Scheduler* get_scheduler (Policy, ...);
+Scheduler* get_scheduler (Policy, void*);
