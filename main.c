@@ -8,14 +8,19 @@ int main (int argc, char *argv[]) {
     if (init(argc, argv)) exit(1);
     VERBOSE { printOptions(); }
 
-    FILE *input = fopen(file, "r");
+    FILE *ip = fopen(input, "r");
+    FILE *op = fopen(output, "w");
 
-    if (!input) {
-        fprintf(stderr, "failed to open file \"%s\", terminating.\n", file);
+    if (!ip) {
+        NSILENT fprintf(stderr, "failed to open file \"%s\", terminating.\n", input);
+        exit(2);
+    }
+    if (!op) {
+        NSILENT fprintf(stderr, "failed to open file \"%s\", terminating.\n", output);
         exit(2);
     }
 
-    VERBOSE { printf("file \"%s\" has opened successfully.\n", file); }
+    VERBOSE { printf("file \"%s\" and \"%s\" has opened successfully.\n", input, output); }
 
     MFQ* mfq = get_mfq(4);
     set_queue(mfq, 0, RR, (void*)2);
@@ -26,10 +31,10 @@ int main (int argc, char *argv[]) {
     VERBOSE printf("MFQ preset complete!\n\n");
 
     int n;
-    fscanf(input, "%d", &n);
+    fscanf(ip, "%d", &n);
 
     for (;n;n--) {
-        Process* p = read_process(input);
+        Process* p = read_process(ip);
 
         if (CUR_CYCLE(p)) {
             VERBOSE printf("Putting this process to ready queue...\n");
@@ -41,21 +46,26 @@ int main (int argc, char *argv[]) {
             enqueue(mfq->queues[p->queue_idx], p);
         }
     }
-    VERBOSE printf("Reading all the processes from %s complete!\n\n", file);
+    VERBOSE printf("Reading all the processes from %s complete!\n\n", input);
 
     Process* p;
     int t;
     while (proceed(mfq, &p, &t)) {
-        printf("\n\tElapsed time: %d\n", t);
-        if (p)
-            printf("\tProceeded process: %d\n\n", p->pid);
-        else
-            printf("\tNo process is proceeded; it was an idle time\n\n");
+        NSILENT printf("\n\tElapsed time: %d\n", t);
+        if (p) {
+            NSILENT printf("\tProceeded process: %d\n\n", p->pid);
+            fprintf(op, "P%d %d\n", p->pid, t);
 
-        if (PROC_END(p)) free_process(p);
+            if (PROC_END(p)) free_process(p);
+        }
+        else {
+            NSILENT printf("\tNo process is proceeded; it was an idle time.\n\n");
+            fprintf(op, "IDLE %d\n", t);
+        }
     }
 
-    fclose(input);
+    fclose(ip);
+    fclose(op);
 
     return 0;
 }
