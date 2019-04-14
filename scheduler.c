@@ -1,14 +1,15 @@
 #include "scheduler.h"
 #include "queue.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 static int round_robin (Process* p, void* arg) {
-    int slice = (int) arg;
+    intptr_t slice = (intptr_t) arg;
 
     if (CUR_CYCLE(p) < slice)
         slice = CUR_CYCLE(p);
 
-    return slice;
+    return (int) slice;
 }
 
 static int srtn (Process* p, void* arg) {

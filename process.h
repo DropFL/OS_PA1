@@ -1,10 +1,13 @@
+#ifndef PROC_GUARD
+#define PROC_GUARD
+
 #include <stdio.h>
 
 #define CUR_CYCLE(p) (p)->cycles[(p)->current_cycle]
 #define NEXT_CYCLE(p) (p)->cycles[(p)->current_cycle + 1]
 #define PROC_END(p) ((p)->current_cycle == (p)->num_cycles)
 
-typedef struct _proc {
+typedef struct {
     /* ID of this `Process`. */
     int pid;
     
@@ -42,3 +45,5 @@ void free_process (Process*);
 
 /* Print info about given `Process` object in pretty way. */
 void print_process (Process*);
+
+#endif

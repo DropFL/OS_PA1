@@ -1,6 +1,9 @@
+#ifndef SCH_GUARD
+#define SCH_GUARD
+
 #include "process.h"
 
-typedef struct _schd {
+typedef struct {
     /* Arguments of this `Scheduler`. */
     void *arg;
 
@@ -10,7 +13,7 @@ typedef struct _schd {
     int (*schedule) (Process*, void*);
 } Scheduler;
 
-typedef enum _plcy {
+typedef enum {
     /* `RR` is an abbreviation of **R**ound **R**obin.
        This policy needs `time_slice` parameter to use. */
     RR,
@@ -26,3 +29,5 @@ typedef enum _plcy {
 
 /* Get a process comparator function matches to given factor. */
 Scheduler* get_scheduler (Policy, void*);
+
+#endif

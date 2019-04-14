@@ -1,3 +1,6 @@
+#ifndef Q_GUARD
+#define Q_GUARD
+
 #include "process.h"
 #include "scheduler.h"
 
@@ -9,7 +12,7 @@ typedef struct _elem {
     struct _elem *next, *prev;
 } Element;
 
-typedef struct _queue {
+typedef struct {
     /* Head and tail `Element` of this `ProcQueue`. */
     Element *head, *tail;
 
@@ -20,7 +23,7 @@ typedef struct _queue {
     Scheduler* scheduler;
 } ProcQueue;
 
-typedef void IterFunc (Process*, void*);
+typedef void IterFunc (Process*, void* arg);
 
 /* Add a `Process` object to `ProcQueue`. */
 void enqueue (ProcQueue*, Process*);
@@ -41,7 +44,9 @@ Process* peek (ProcQueue*);
 int schedule (ProcQueue*);
 
 /* Iterate the target `ProcQueue` and execute given function on each `Process` */
-void iterate (ProcQueue*, IterFunc*);
+void iterate (ProcQueue*, IterFunc*, void* arg);
 
 /* Remove the head of `from` and set it to the head of `to` */
 void move_head (ProcQueue* from, ProcQueue* to);
+
+#endif

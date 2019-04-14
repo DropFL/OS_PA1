@@ -84,6 +84,13 @@ Process* peek (ProcQueue* q) {
     return is_empty(q) ? NULL : q->head->proc;
 }
 
+void iterate (ProcQueue* q, IterFunc* func, void* arg) {
+    if (is_empty(q)) return;
+
+    for (Element* e = q->head; e; e = e->next)
+        func(e->proc, arg);
+}
+
 int schedule (ProcQueue* q) {
     if (is_empty(q)) return 0;
     return q->scheduler->schedule(peek(q), q->scheduler->arg);

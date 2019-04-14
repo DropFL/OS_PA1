@@ -1,3 +1,6 @@
+#ifndef MFQ_GUARD
+#define MFQ_GUARD
+
 #include "queue.h"
 
 typedef struct _mfq {
@@ -20,3 +23,5 @@ void set_queue (MFQ*, int, Policy, void*);
 /* Schedule an `MFQ` and save info of the operation.
    Return value is true if some task is done. */
 int proceed (MFQ* mfq, Process** p, int* t);
+
+#endif
