@@ -4,19 +4,30 @@
 
 static int last = -1;
 
+static void wait (Process* p, void* arg) {
+    void** args = (void**)arg;
+    if (p == args[1]) return;
+    p->wait += *(int*) args[0];
+}
+
 static void elapse (Process* p, void* arg) {
     void** args = (void**)arg;
     int time = *(int*)args[0];
-    MFQ* mfq = (MFQ*)args[1];
+    MFQ* mfq = (MFQ*)args[2];
+
+    if (p == args[1]) return;
 
     VERBOSE printf("Elapse %d on process %d\n", time, p->pid);
 
     if (CUR_CYCLE(p) <= time) {
         VERBOSE printf("Process %d's cycle %d has ended.\n", p->pid, p->current_cycle);
+        int delta = time - CUR_CYCLE(p);
         CUR_CYCLE(p) = 0;
-        if ((p->current_cycle ++) % 2 == 0) {
+        p->current_cycle ++;
+        if (IS_ACTIVE(p)) {
             VERBOSE printf("Moving process %d from ready queue to queue %d...\n", p->pid, p->queue_idx);
             move_head(mfq->ready_queue, mfq->queues[p->queue_idx]);
+            p->wait += delta;
         }
         else if (PROC_END(p)) {
             VERBOSE printf("Process %d just ended.\n", p->pid);
@@ -32,7 +43,7 @@ static void elapse (Process* p, void* arg) {
         CUR_CYCLE(p) -= time;
         VERBOSE printf("Remaining time: %d\n", CUR_CYCLE(p));
 
-        if (p->current_cycle % 2) {
+        if (IS_ACTIVE(p)) {
             int next_q = p->queue_idx + (p->queue_idx + 1 != mfq->num_queue);
             VERBOSE printf("Moving process %d from queue %d to queue %d...\n", p->pid, p->queue_idx, next_q);
             move_head(mfq->queues[p->queue_idx], mfq->queues[next_q]);
@@ -76,7 +87,7 @@ void set_queue (MFQ* mfq, int idx, Policy p, void* arg) {
 
 int proceed (MFQ* mfq, Process** p, int* t) {
     int i;
-    void* args[2] = {t, mfq};
+    void* args[3] = {t, NULL, mfq};
 
     if (last < 0) {
         for (i = 0; i < mfq->num_queue; i ++)
@@ -109,8 +120,13 @@ int proceed (MFQ* mfq, Process** p, int* t) {
             VERBOSE printf("Process %d has preempted, saving queue %d for next scheduling...\n", (*p)->pid, last);
         }
         elapse(*p, args);
+        args[1] = *p;
     }
-    VERBOSE printf("Elapsing %d for ready queue...\n", *t);
+    VERBOSE printf("Waiting for %d on every active queue...\n", *t);
+    for (int i = 0; i < mfq->num_queue; i ++)
+        iterate(mfq->queues[i], wait, args);
+
+    VERBOSE printf("Elapsing %d on ready queue...\n", *t);
     iterate(mfq->ready_queue, elapse, args);
 
     VERBOSE("proceed ended.\n");

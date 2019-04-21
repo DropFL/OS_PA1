@@ -20,26 +20,31 @@ int init (int argc, char *argv[]) {
 
     for (int i = 1; i < argc; i ++) {
         if (*argv[i] == '-') {
-            if (streq(argv[i], "-v") || streq(argv[i], "--verbose"))
-                verbose = verbose ? 2 : 1;
+            if (streq(argv[i], "-v") || streq(argv[i], "--verbose")) {
+                if (verbose) fprintf(stderr, "init warning: multiple verbose option is detected.\n");
+                verbose = 1;
+            }
             else if (streq(argv[i], "-o")) {
                 if (output != DEFAULT_OUTPUT) {
-                    fprintf(stderr, "init error: output file must be only one.");
+                    fprintf(stderr, "init error: output file must be only one.\n");
                     return 2;
                 }
                 else output = argv[++i];
             }
-            else if (streq(argv[i], "-s") || streq(argv[i], "--silent"))
+            else if (streq(argv[i], "-s") || streq(argv[i], "--silent")) {
+                if (silent) fprintf(stderr, "init warning: multiple silent option is detected.\n");
                 silent = 1;
+            }
+            else {
+                fprintf(stderr, "init warning: unspecified flag \"%s\" is used.\n", argv[i]);
+            }
         }
         else if (input != DEFAULT_INPUT) {
-            fprintf(stderr, "init error: input file must be only one.");
+            fprintf(stderr, "init error: input file must be only one.\n");
             return 1;
         }
         else input = argv[i];
     }
-
-    VERBOSE fprintf(stderr, "init warning: multiple verbose option is detected.");
 
     return 0;
 }

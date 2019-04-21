@@ -6,10 +6,20 @@
 #define CUR_CYCLE(p) (p)->cycles[(p)->current_cycle]
 #define NEXT_CYCLE(p) (p)->cycles[(p)->current_cycle + 1]
 #define PROC_END(p) ((p)->current_cycle >= (p)->num_cycles)
+#define IS_ACTIVE(p) ((p)->current_cycle % 2 == 1)
 
 typedef struct {
     /* ID of this `Process`. */
     int pid;
+
+    /* Arrival time of this `Process`. */
+    int arrival;
+
+    /* Terminated time of this `Process`. */
+    int term;
+
+    /* Waiting time of this `Process`. */
+    int wait;
     
     /* Index of the queue which this `Process` is (or to be) located. */
     int queue_idx;

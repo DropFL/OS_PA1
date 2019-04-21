@@ -4,6 +4,14 @@
 #include "MFQ.h"
 #include "option.h"
 
+Process** proc_pool;
+int n;
+
+int get_index (Process* p) {
+    for (int i = 0; i < n; i ++)
+        if (proc_pool[i] == p) return i;
+}
+
 int main (int argc, char *argv[]) {
     if (init(argc, argv)) exit(1);
     VERBOSE { printOptions(); }
@@ -30,39 +38,64 @@ int main (int argc, char *argv[]) {
 
     VERBOSE printf("MFQ preset complete!\n\n");
 
-    int n;
     fscanf(ip, "%d", &n);
+    proc_pool = (Process**) malloc(sizeof(Process*) * n);
 
-    for (;n;n--) {
-        Process* p = read_process(ip);
+    for (int i = 0; i < n; i ++) {
+        Process* p = proc_pool[i] = read_process(ip);
 
-        if (CUR_CYCLE(p)) {
-            VERBOSE printf("Putting this process to ready queue...\n");
-            enqueue(mfq->ready_queue, p);
-        }
-        else {
+        if (IS_ACTIVE(p)) {
             VERBOSE printf("Putting this process to queue %d...\n", p->queue_idx);
             p->current_cycle = 1;
             enqueue(mfq->queues[p->queue_idx], p);
         }
+        else {
+            VERBOSE printf("Putting this process to ready queue...\n");
+            enqueue(mfq->ready_queue, p);
+        }
     }
     VERBOSE printf("Reading all the processes from %s complete!\n\n", input);
 
+    for (int i = 0; i < n; i ++)
+        fprintf(op, "%d ", proc_pool[i]->pid);
+    fprintf(op, "\n");
+
     Process* p;
-    int t;
-    while (proceed(mfq, &p, &t)) {
-        NSILENT printf("\n\tElapsed time: %d\n", t);
+    int t = 0, dt;
+    while (proceed(mfq, &p, &dt)) {
+        t += dt;
+        NSILENT printf("\n\tElapsed time: %d\n", dt);
         if (p) {
             NSILENT printf("\tProceeded process: %d\n\n", p->pid);
-            fprintf(op, "P%d %d\n", p->pid, t);
+            int idx = get_index(p);
 
-            if (PROC_END(p)) free_process(p);
+            for (int i = 0; i < dt; i ++) {
+                for (int j = 0; j < idx; j ++)
+                    fprintf(op, " ");
+                fprintf(op, "|\n");
+            }
+
+            if (PROC_END(p)) p->term = t;
         }
         else {
             NSILENT printf("\tNo process is proceeded; it was an idle time.\n\n");
-            fprintf(op, "IDLE %d\n", t);
+
+            for (int i = 0; i < dt; i ++)
+                fprintf(op, "\n");
         }
     }
+
+    float tt_sum = 0, wt_sum = 0;
+    for (int i = 0; i < n; i ++) {
+        int tt = proc_pool[i]->term - proc_pool[i]->arrival,
+            wt = proc_pool[i]->wait;
+        
+        fprintf(op, "P%d: %d %d\n", proc_pool[i]->pid, tt, wt);
+        tt_sum += tt;
+        wt_sum += wt;
+    }
+
+    fprintf(op, "avg: %.2f %.2f", tt_sum / n, wt_sum / n);
 
     fclose(ip);
     fclose(op);

@@ -10,7 +10,7 @@ static void __enqueue (ProcQueue* q, Element* e) {
     Element* cur;
 
     for (cur = q->tail; cur; cur = cur->prev)
-        if (!(q->compare) || q->compare(cur->proc, e->proc) <= 0) break;
+        if (q->compare(cur->proc, e->proc) <= 0) break;
 
     if (cur) {
         if (cur != q->tail) {
